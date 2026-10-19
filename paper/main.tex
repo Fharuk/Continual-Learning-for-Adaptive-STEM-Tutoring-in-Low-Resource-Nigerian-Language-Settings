@@ -1,0 +1,64 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{booktabs}
+\title{A Synthetic Continual-Learning Benchmark for Sequential Physics-Topic Prediction: An Initial Study}
+\author{\IEEEauthorblockN{Author Name(s)}\IEEEauthorblockA{Institution\\Email}}
+\begin{document}
+\maketitle
+\begin{abstract}
+Adaptive tutoring systems must balance learning new material with retaining earlier knowledge, but controlled continual-learning evidence for low-resource Nigerian-language STEM tutoring is limited. We implement a reproducible synthetic benchmark of six secondary-physics topics and compare sequential fine-tuning, elastic weight consolidation (EWC), experience replay, cumulative joint training, and task-isolated predictors. The simulator produces 45,000 responses from 500 generated profiles; students are split by identity, and results are averaged over three random seeds. In this pilot, mean held-out accuracy ranges from 0.671 to 0.678. EWC achieves 0.678 accuracy and mean backward transfer of -0.0015, while sequential fine-tuning achieves 0.675 and -0.0030. These small differences are descriptive only: the data-generating process is synthetic, the predictor is a linear logistic model, and there is no human or language validation. The study provides an executable baseline and evaluation protocol, not evidence of learning gains or efficacy in Yoruba, Igbo, or Hausa. Qualified language review and real learner studies remain necessary.
+\end{abstract}
+\begin{IEEEkeywords}continual learning, synthetic data, physics education, knowledge tracing, low-resource NLP\end{IEEEkeywords}
+\section{Introduction}
+An adaptive tutor must estimate whether a learner can answer a question while responding to a changing stream of topics and learner history. Sequentially updating a model can improve fit to recent examples while degrading performance on previously learned tasks, the continual-learning problem commonly called catastrophic forgetting \cite{mccloskey1989, kirkpatrick2017}. In educational settings, a second concern is personalization: responses from one learner should inform that learner's predictions without contaminating evaluation for other learners.
+
+This study addresses a deliberately narrow methodological question: under a controlled synthetic stream of secondary-school physics questions, how do simple continual-learning strategies compare on held-out response prediction and retention across topic units? The motivating application is future tutoring in Nigerian languages, but the present experiments use English-only synthetic text-independent features. No Nigerian-language translations were validated and no real student data were collected. Thus, this work does not establish language-specific effectiveness or classroom impact.
+
+Contributions are (1) a deterministic, documented synthetic sequential-response generator; (2) an executable comparison of fine-tuning, EWC, replay, a cumulative joint reference, and task-isolated predictors; and (3) a student-disjoint evaluation matrix with explicitly defined transfer measures. All findings are preliminary and conditional on the simulator.
+\section{Related Work}
+Knowledge tracing estimates learner knowledge from response sequences. Deep Knowledge Tracing used recurrent neural networks to model student interaction sequences \cite{piech2015}; self-attentive knowledge tracing explored attention-based response-history representations \cite{pandey2019}. These methods motivate sequential prediction, but benchmark performance on educational datasets does not itself validate a simulated learner model or language-specific tutoring.
+
+Continual learning studies how models acquire sequential tasks while retaining prior performance. Elastic Weight Consolidation (EWC) uses a Fisher-information-weighted penalty on parameter changes \cite{kirkpatrick2017}. Experience replay mixes stored examples from previous tasks into later training, a simple and effective family of rehearsal approaches \cite{robins1995}. Progressive Neural Networks add task-specific capacity and lateral connections while retaining earlier columns \cite{rusu2016}. This pilot uses a task-isolated model as a stability reference; it is not an implementation of Progressive Neural Networks.
+
+African-language NLP has advanced through community-led data and benchmark efforts such as Masakhane \cite{nekoto2020}, multilingual pretrained representations including AfroXLMR \cite{alabi2022}, and large-scale multilingual translation such as NLLB-200 \cite{nllb2022}. These resources motivate future language-aware work, but availability of a pretrained model or machine translation does not validate physics terminology, dialect, or learner-facing question quality.
+
+The present work is a small synthetic benchmark, not a claim that no related Nigerian-language tutoring work exists. A systematic literature review and qualified translation review are prerequisites to stronger gap or novelty statements.
+\section{Synthetic Data and Protocol}
+We define six topic tasks: motion, Newton's laws, energy, waves, electricity, and optics. The simulator creates 500 profiles with independently sampled topic mastery, topic-specific response error, and learning rate. Each profile answers 15 items per topic (five per difficulty), in a fixed topic order, producing 45,000 generated responses. For a response, the simulator maps latent mastery and difficulty to a probability, samples a binary outcome, and makes a small feedback-dependent mastery update. These latent variables are generator internals and are excluded from predictor features. This simplified process is not fitted to real learners.
+
+We split profiles by ID: 80\% train and 20\% test. Question rows from a test profile never enter optimization. The input consists of an intercept, six topic indicators, difficulty, and the student's preceding same-topic accuracy with Laplace smoothing. The response label is correctness. This is a compact tabular logistic predictor—not a transformer, language encoder, or per-student adapter. Although history features provide a limited form of personalization, we do not claim that a separately optimized student adapter was evaluated.
+
+Each topic is one training experience. We compare sequential fine-tuning, EWC, replay with a 300-example reservoir, cumulative joint training on all tasks seen to date, and task-isolated models trained separately per topic. All use the same feature representation and logistic update family, two epochs per experience, and learning rate 0.08. The EWC penalty coefficient is 8.0. Three seeds (11, 22, 33) are run. This is a small pilot rather than a hyperparameter-optimized benchmark; the task-isolated condition has independent models and therefore different parameter allocation.
+
+Accuracy is measured on held-out profiles after each experience. Backward transfer (BWT) is the mean difference between final held-out accuracy on each earlier task and its accuracy immediately after first learning it; negative values indicate forgetting. Forward transfer (FWT) is mean pre-training accuracy on each future task minus the zero-initialized predictor's accuracy on that task. FWT is sensitive to this particular baseline and synthetic feature design. We report mean and sample standard deviation across seeds; three seeds provide limited uncertainty characterization.
+\section{Results}
+Table~\ref{tab:results} summarizes the pilot. EWC has the highest mean final accuracy (0.6781), followed by sequential fine-tuning (0.6749) and replay (0.6747). Mean BWT is close to zero for these shared-model strategies (EWC: -0.0015; replay: -0.0014; fine-tuning: -0.0030). The observed differences are small relative to between-seed standard deviations and should not be interpreted as evidence of a reliable EWC advantage. Task-isolated predictors have zero BWT by construction for prior tasks, but incur separate per-task models and do not share task knowledge.
+
+\begin{table}[t]
+\centering
+\caption{Held-out synthetic-profile metrics across three seeds (mean $\pm$ sample SD).}
+\label{tab:results}
+\small
+\begin{tabular}{lccc}
+\toprule
+Method & Accuracy & BWT & FWT \\
+\midrule
+Fine-tuning & 0.6749 $\pm$ 0.0095 & -0.0030 $\pm$ 0.0007 & 0.3377 $\pm$ 0.0190 \\
+EWC & \textbf{0.6781} $\pm$ 0.0039 & -0.0015 $\pm$ 0.0052 & 0.2882 $\pm$ 0.0227 \\
+Replay & 0.6747 $\pm$ 0.0049 & -0.0014 $\pm$ 0.0031 & 0.3312 $\pm$ 0.0210 \\
+Cumulative joint & 0.6715 $\pm$ 0.0018 & -0.0096 $\pm$ 0.0070 & 0.3182 $\pm$ 0.0100 \\
+Task-isolated & 0.6714 $\pm$ 0.0109 & 0.0000 $\pm$ 0.0000 & 0.0000 $\pm$ 0.0000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The positive FWT values for shared models reflect that learning earlier topics improves the generic predictor relative to the zero-initialized reference in this simulator. The task-isolated value is zero because its future-task predictor remains at initialization until that task is trained. These values are not comparable to human learning outcomes, and FWT should be interpreted only with its stated reference. The small absolute BWT magnitudes suggest limited forgetting in this low-capacity feature-based setup; the experiment therefore does not demonstrate that large language models or real tutoring systems avoid catastrophic forgetting. Per-topic matrices and seed-level outputs are retained in the results artifact.
+\section{Discussion and Limitations}
+The initial executable experiment shows how to define a student-disjoint stream benchmark and compute retention metrics reproducibly. It does not support deployment recommendations. The simulated profiles, response probabilities, and feedback rule are hand-specified; the feature model is linear; only three seeds and one task order were tested; hyperparameters were not systematically tuned; and synthetic items are illustrative rather than a verified question bank. No real learners, Nigerian-language translations, or qualified language reviewers were involved. Therefore the results cannot establish language comprehension, personalization benefit, fairness, learning gains, or efficacy in Nigerian schools. The machine-learning implementation is intentionally a lightweight baseline, not the AfroXLMR/mBERT transformer proposed in the original concept.
+
+A next study should obtain physics-reviewed items, recruit qualified Yoruba, Igbo, and Hausa reviewers for independent translation review and adjudication, and compare language encoders only after those gates. Real learner studies would require suitable ethics approval, consent/assent, data minimization, secure storage, and safeguards against consequential use of incorrect predictions. A synthetic generator is useful for software testing but cannot substitute for these steps.
+\section{Conclusion}
+We provide a reproducible synthetic pilot comparing several sequential-learning baselines on six physics-topic tasks. EWC's mean accuracy is marginally higher in this run, while all shared-model methods show small BWT magnitudes; the results are descriptive and simulator-dependent. The paper is not evidence of Nigerian-language tutoring efficacy. Future work should validate the items and translations with qualified speakers, broaden the continual-learning evaluation, and then assess the system with ethically collected real learner data.
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+\end{document}
